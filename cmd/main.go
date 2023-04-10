@@ -1,0 +1,31 @@
+package main
+
+import (
+	"log"
+	"server/db"
+	"server/internal/user"
+	"server/internal/ws"
+	"server/internal/message"
+	"server/router"
+)
+
+func main() {
+	dbConn, err := db.NewDatabase()
+	if err != nil {
+		log.Fatalf("could not initialize database connection: %s", err)
+	}
+
+	userRep := user.NewRepository(dbConn.GetDB())
+	userSvc := user.NewService(userRep)
+	userHandler := user.NewHandler(userSvc)
+	messageRep := message.NewRepository(dbConn.GetDB())
+	messageSvc := message.NewService(messageRep)
+	messageHandler := message.NewHandler(messageSvc)
+
+	hub := ws.NewHub()
+	wsHandler := ws.NewHandler(hub)
+	go hub.Run()
+
+	router.InitRouter(userHandler, messageHandler, wsHandler)
+	router.Start("0.0.0.0:8080")
+}
